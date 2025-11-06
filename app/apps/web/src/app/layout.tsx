@@ -11,6 +11,7 @@ import {
   SignedOut,
   UserButton,
 } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -27,22 +28,23 @@ export const metadata: Metadata = {
 	description: "app",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const { userId } = await auth();
+	const isSignedIn = !!userId;
+
 	return (
 		<ClerkProvider>
 		<html lang="en" suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
-				<Providers>
-					<div className="grid grid-rows-[auto_1fr] h-svh">
-						<Header />
-						{children}
-					</div>
+				<Providers isSignedIn={isSignedIn}>
+					<Header />
+					{children}
 				</Providers>
 			</body>
 		</html>

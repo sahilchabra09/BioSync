@@ -2,17 +2,47 @@
 
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SocketProvider } from "./socket-provider";
+import OnboardingCheck from "./onboarding-check";
+import { useState } from "react";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ 
+	children,
+	isSignedIn,
+}: { 
+	children: React.ReactNode;
+	isSignedIn: boolean;
+}) {
+	const [queryClient] = useState(
+		() =>
+			new QueryClient({
+				defaultOptions: {
+					queries: {
+						staleTime: 60 * 1000, // 1 minute
+						refetchOnWindowFocus: false,
+					},
+				},
+			}),
+	);
+
 	return (
-		<ThemeProvider
-			attribute="class"
-			defaultTheme="system"
-			enableSystem
-			disableTransitionOnChange
-		>
-			{children}
-			<Toaster richColors />
-		</ThemeProvider>
+		<QueryClientProvider client={queryClient}>
+			<ThemeProvider
+				attribute="class"
+				defaultTheme="system"
+				enableSystem
+				disableTransitionOnChange
+			>
+				<SocketProvider>
+					{isSignedIn ? (
+						<OnboardingCheck>{children}</OnboardingCheck>
+					) : (
+						children
+					)}
+					<Toaster richColors />
+				</SocketProvider>
+			</ThemeProvider>
+		</QueryClientProvider>
 	);
 }

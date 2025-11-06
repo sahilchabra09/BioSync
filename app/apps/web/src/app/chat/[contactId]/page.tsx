@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSocket } from "@/components/socket-provider";
+import { useMessages, useInvalidateMessages } from "@/lib/hooks";
+import { useUser } from "@clerk/nextjs";
 
 interface Message {
   id: string;
@@ -14,13 +17,6 @@ interface Message {
   isRead: boolean;
 }
 
-interface Contact {
-  id: string;
-  name: string;
-  avatar: string;
-  isOnline: boolean;
-}
-
 export default function ChatPage({ params }: { params: Promise<{ contactId: string }> }) {
   const { contactId } = use(params);
   const router = useRouter();
@@ -28,31 +24,16 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
   const isEyeTracking = searchParams.get("mode") === "eye-tracking";
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      senderId: contactId,
-      content: "Hey! How are you doing today?",
-      timestamp: "10:30 AM",
-      isRead: true,
-    },
-    {
-      id: "2",
-      senderId: "me",
-      content: "I'm doing great! How about you?",
-      timestamp: "10:32 AM",
-      isRead: true,
-    },
-    {
-      id: "3",
-      senderId: contactId,
-      content: "I'm good too! Want to grab coffee later?",
-      timestamp: "10:35 AM",
-      isRead: true,
-    },
-  ]);
+  const { user } = useUser();
+  const { socket, isConnected, sendMessage, startTyping, stopTyping, onReceiveMessage, onMessageDelivered, onUserTyping } = useSocket();
+  const invalidateMessages = useInvalidateMessages();
+
+  // Fetch messages from API
+  const { data: messagesData, isLoading, error } = useMessages(contactId);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [inputMessage, setInputMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const [aiOptions, setAiOptions] = useState([
     "Sure! That sounds great! What time works for you?",
     "I'd love to, but I'm busy today. How about tomorrow?",
@@ -62,12 +43,74 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [dwellProgress, setDwellProgress] = useState<{ [key: number]: number }>({});
 
-  const contact: Contact = {
-    id: contactId,
-    name: "Alice Johnson",
-    avatar: "AJ",
-    isOnline: true,
-  };
+  // Update local messages when data is fetched
+  useEffect(() => {
+    if (messagesData?.messages) {
+      setMessages(
+        messagesData.messages.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.senderClerkId,
+          content: msg.content,
+          timestamp: new Date(msg.createdAt).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isRead: msg.status === "read",
+        }))
+      );
+    }
+  }, [messagesData]);
+
+  // Socket.IO event listeners
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Listen for incoming messages
+    const handleReceiveMessage = (data: any) => {
+      if (data.senderClerkId === contactId || data.receiverClerkId === contactId) {
+        const newMessage: Message = {
+          id: data.messageId.toString(),
+          senderId: data.senderClerkId,
+          content: data.content,
+          timestamp: new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isRead: false,
+        };
+        setMessages((prev) => [...prev, newMessage]);
+        
+        // Mark as read if it's from the other person
+        if (data.senderClerkId === contactId && data.messageId) {
+          socket.markAsRead([data.messageId]);
+        }
+      }
+    };
+
+    // Listen for message delivered status
+    const handleMessageDelivered = (data: any) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === data.messageId.toString() ? { ...msg, isRead: data.status === "read" } : msg
+        )
+      );
+    };
+
+    // Listen for typing indicator
+    const handleUserTyping = (data: any) => {
+      if (data.fromClerkId === contactId) {
+        setIsTyping(data.isTyping);
+      }
+    };
+
+    onReceiveMessage(handleReceiveMessage);
+    onMessageDelivered(handleMessageDelivered);
+    onUserTyping(handleUserTyping);
+
+    return () => {
+      // Cleanup is handled in SocketIOClient class
+    };
+  }, [isConnected, contactId, socket, onReceiveMessage, onMessageDelivered, onUserTyping]);
 
   useEffect(() => {
     scrollToBottom();
@@ -78,9 +121,15 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
   };
 
   const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: "me",
+    if (!isConnected || !user?.id) return;
+
+    // Send message via Socket.IO using context method
+    sendMessage(contactId, content);
+
+    // Optimistically add message to UI
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      senderId: user.id,
       content,
       timestamp: new Date().toLocaleTimeString("en-US", {
         hour: "2-digit",
@@ -88,9 +137,13 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
       }),
       isRead: false,
     };
-
-    setMessages([...messages, newMessage]);
+    setMessages((prev) => [...prev, tempMessage]);
     setInputMessage("");
+
+    // Invalidate messages query to refetch
+    setTimeout(() => {
+      invalidateMessages(contactId);
+    }, 500);
 
     // Simulate AI generating new options after sending
     if (isEyeTracking) {
@@ -102,6 +155,17 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
           "Could you explain that a bit more?",
         ]);
       }, 1000);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputMessage(value);
+    
+    // Send typing indicator using context method
+    if (value.length > 0) {
+      startTyping(contactId);
+    } else {
+      stopTyping(contactId);
     }
   };
 
@@ -132,6 +196,33 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600 dark:text-gray-400">Loading conversation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white dark:bg-gray-950">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Failed to load conversation</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            {error instanceof Error ? error.message : "Unknown error"}
+          </p>
+          <Button onClick={() => router.push("/chat")} className="mt-4">
+            Back to Contacts
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col bg-white dark:bg-gray-950">
       {/* Top Bar */}
@@ -147,21 +238,21 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
 
         <div className="flex items-center gap-3 flex-1">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
-              {contact.avatar}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+              {messagesData?.otherUser?.nickname?.slice(0, 2).toUpperCase() || contactId.slice(0, 2).toUpperCase()}
             </div>
             <div
               className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white dark:border-gray-900 ${
-                contact.isOnline ? "bg-green-500" : "bg-gray-400"
+                isConnected ? "bg-green-500" : "bg-gray-400"
               }`}
             />
           </div>
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              {contact.name}
+              {messagesData?.otherUser?.nickname || contactId}
             </h2>
             <p className="text-sm text-gray-500">
-              {contact.isOnline ? "Online" : "Offline"}
+              {isTyping ? "Typing..." : isConnected ? "Online" : "Offline"}
             </p>
           </div>
         </div>
@@ -183,31 +274,34 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
           <div
             key={message.id}
             className={`flex ${
-              message.senderId === "me" ? "justify-end" : "justify-start"
+              message.senderId === user?.id ? "justify-end" : "justify-start"
             }`}
           >
             <div
               className={`flex gap-2 max-w-[70%] ${
-                message.senderId === "me" ? "flex-row-reverse" : ""
+                message.senderId === user?.id ? "flex-row-reverse" : ""
               }`}
             >
-              {message.senderId !== "me" && (
-                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                  {contact.avatar}
+              {message.senderId !== user?.id && (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  {messagesData?.otherUser?.nickname?.slice(0, 2).toUpperCase() || contactId.slice(0, 2).toUpperCase()}
                 </div>
               )}
               <div>
                 <div
                   className={`rounded-xl px-4 py-3 shadow-sm ${
-                    message.senderId === "me"
+                    message.senderId === user?.id
                       ? "bg-blue-500 text-white"
                       : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
                   }`}
                 >
                   <p className="text-base leading-relaxed">{message.content}</p>
                 </div>
-                <p className="text-xs text-gray-400 mt-1 px-2">
+                <p className="text-xs text-gray-400 mt-1 px-2 flex items-center gap-1">
                   {message.timestamp}
+                  {message.senderId === user?.id && message.isRead && (
+                    <span className="text-blue-500">✓✓</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -222,18 +316,25 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
         <div className="h-20 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex items-center px-4 gap-3">
           <Input
             value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             onKeyPress={(e) => {
               if (e.key === "Enter" && inputMessage.trim()) {
                 handleSendMessage(inputMessage);
+                stopTyping(contactId);
               }
             }}
             placeholder="Type a message..."
             className="flex-1 h-12 text-base"
+            disabled={!isConnected}
           />
           <Button
-            onClick={() => inputMessage.trim() && handleSendMessage(inputMessage)}
-            disabled={!inputMessage.trim()}
+            onClick={() => {
+              if (inputMessage.trim()) {
+                handleSendMessage(inputMessage);
+                stopTyping(contactId);
+              }
+            }}
+            disabled={!inputMessage.trim() || !isConnected}
             size="icon"
             className="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600"
           >
