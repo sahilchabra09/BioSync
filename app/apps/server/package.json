@@ -7,17 +7,33 @@
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot src/index.ts",
-    "start": "bun run dist/index.js"
+    "start": "bun run dist/index.js",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@app/db": "workspace:*",
+    "@clerk/clerk-sdk-node": "^5.1.6",
+    "@hono/zod-openapi": "^1.1.4",
+    "@neondatabase/serverless": "^1.0.2",
+    "@scalar/hono-api-reference": "^0.9.24",
+    "@socket.io/bun-engine": "^0.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
     "hono": "^4.8.2",
-    "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@app/db": "workspace:*"
+    "socket.io": "^4.8.1",
+    "stoker": "^2.0.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "catalog:",
     "@types/bun": "^1.2.6",
-    "tsdown": "catalog:"
+    "@types/cors": "^2.8.19",
+    "drizzle-kit": "^0.31.6",
+    "tsdown": "catalog:",
+    "tsx": "^4.20.6",
+    "typescript": "catalog:"
   }
 }
