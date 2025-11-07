@@ -1,95 +1,99 @@
 "use client";
 
-import Link from "next/link";
-import { MessageSquare, Eye, Settings, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { MessageSquare, Mic, AlertCircle, Home } from "lucide-react";
 
-export default function Home() {
+export default function HomePage() {
+	const router = useRouter();
+
+	const menuItems = [
+		{
+			id: "chat",
+			label: "Chat",
+			icon: MessageSquare,
+			color: "from-blue-500 to-blue-600",
+			path: "/chat",
+		},
+		{
+			id: "talk",
+			label: "Talk",
+			icon: Mic,
+			color: "from-purple-500 to-purple-600",
+			path: "/talk",
+		},
+		{
+			id: "sos",
+			label: "SOS",
+			icon: AlertCircle,
+			color: "from-red-500 to-red-600",
+			path: null,
+		},
+		{
+			id: "appliance",
+			label: "Appliance Control",
+			icon: Home,
+			color: "from-green-500 to-green-600",
+			path: null,
+		},
+	];
+
+	const handleCardClick = (path: string | null) => {
+		if (path) {
+			router.push(path as any);
+		}
+	};
+
 	return (
-		<div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-			<div className="container mx-auto px-4 py-16 max-w-6xl">
-				{/* Hero Section */}
-				<div className="text-center mb-16">
-					<h1 className="text-6xl font-bold mb-6 bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-						BioSync
-					</h1>
-					<p className="text-2xl text-gray-600 dark:text-gray-400 mb-4">
-						Accessible Communication for Everyone
-					</p>
-					<p className="text-lg text-gray-500 dark:text-gray-500 max-w-2xl mx-auto">
-						An innovative chat platform designed with accessibility at its core,
-						featuring eye-tracking technology and AI-powered assistance for
-						paralyzed users.
-					</p>
-				</div>
-
-				{/* Feature Cards */}
-				<div className="grid md:grid-cols-3 gap-8 mb-12">
-					<div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-800 hover:shadow-xl transition-all duration-300">
-						<div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-4">
-							<MessageSquare className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-						</div>
-						<h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
-							Smart Messaging
-						</h3>
-						<p className="text-gray-600 dark:text-gray-400">
-							Seamless communication with intelligent message management and
-							real-time status updates.
-						</p>
-					</div>
-
-					<div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-800 hover:shadow-xl transition-all duration-300">
-						<div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4">
-							<Eye className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-						</div>
-						<h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
-							Eye-Tracking Support
-						</h3>
-						<p className="text-gray-600 dark:text-gray-400">
-							Advanced eye-tracking interface with AI-generated response options
-							for enhanced accessibility.
-						</p>
-					</div>
-
-					<div className="bg-white dark:bg-gray-900 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-800 hover:shadow-xl transition-all duration-300">
-						<div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mb-4">
-							<Settings className="w-8 h-8 text-green-600 dark:text-green-400" />
-						</div>
-						<h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
-							Customizable Settings
-						</h3>
-						<p className="text-gray-600 dark:text-gray-400">
-							Personalize your experience with adjustable text sizes, dwell
-							times, and high contrast modes.
-						</p>
-					</div>
-				</div>
-
-				{/* CTA Section */}
-				<div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-center text-white shadow-2xl">
-					<h2 className="text-4xl font-bold mb-4">Ready to Get Started?</h2>
-					<p className="text-xl mb-8 opacity-90">
-						Experience the future of accessible communication
-					</p>
-					<div className="flex gap-4 justify-center">
-						<Link href="/chat">
-							<Button
-								size="lg"
-								className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-lg"
+		<div className="h-screen w-screen bg-white dark:bg-gray-950 overflow-hidden fixed inset-0">
+			<div className="grid grid-cols-3 grid-rows-2 h-full w-full gap-0">
+				{menuItems.map((item, index) => {
+					const Icon = item.icon;
+					return (
+						<div
+							key={item.id}
+							onClick={() => handleCardClick(item.path)}
+							className={`relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group ${
+								item.path ? "cursor-pointer" : "cursor-default"
+							}`}
+						>
+							<div
+								className={`absolute inset-0 m-5 bg-white dark:bg-gray-900 rounded-2xl border-4 border-transparent ${
+									item.path
+										? "group-hover:border-blue-500 group-hover:shadow-xl group-hover:scale-[1.02]"
+										: "opacity-50"
+								} transition-all duration-300 flex flex-col items-center justify-center p-6`}
 							>
-								Open Messages
-								<ArrowRight className="ml-2 w-5 h-5" />
-							</Button>
-						</Link>
-					</div>
-				</div>
+								<div
+									className={`w-24 h-24 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center text-white mb-4 shadow-lg`}
+								>
+									<Icon className="w-12 h-12" />
+								</div>
 
-				{/* Footer Info */}
-				<div className="mt-16 text-center">
-					<p className="text-gray-500 dark:text-gray-600">
-						Built with ❤️ for accessibility | Powered by AI
-					</p>
-				</div>
+								<h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
+									{item.label}
+								</h2>
+
+								{!item.path && (
+									<p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+										Coming soon
+									</p>
+								)}
+							</div>
+						</div>
+					);
+				})}
+
+				{/* Empty slots */}
+				{[1, 2].map((i) => (
+					<div
+						key={`empty-${i}`}
+						className="relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800"
+					>
+						<div className="absolute inset-0 m-5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border-4 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center">
+							<p className="text-gray-400 dark:text-gray-600 text-sm"></p>
+						</div>
+					</div>
+				))}
 			</div>
 		</div>
 	);

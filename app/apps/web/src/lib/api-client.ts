@@ -1,7 +1,10 @@
 import axios from "axios";
 
+const DEFAULT_API_URL = "http://localhost:3000";
+const DEFAULT_TRANSCRIBE_URL = "https://bbhkf952-8001.inc1.devtunnels.ms/";
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -36,4 +39,19 @@ export const api = {
     apiClient.get(`/conversations/with/${contactId}/messages`, {
       params: { limit, offset },
     }),
+
+  transcribeAudio: (audioFile: File) => {
+    const formData = new FormData();
+    formData.append("file", audioFile);
+
+    const endpointBase = process.env.NEXT_PUBLIC_TRANSCRIBE_API_URL || DEFAULT_TRANSCRIBE_URL;
+    const endpoint = new URL("/audio/transcribe", endpointBase).toString();
+
+    return axios.post(endpoint, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Accept: "application/json",
+      },
+    });
+  },
 };

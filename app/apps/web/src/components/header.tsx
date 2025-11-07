@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { ModeToggle } from "./mode-toggle";
-
+import { UserButton } from "@clerk/nextjs";
 
 export default function Header() {
 	const links = [
 		{ to: "/", label: "Home" },
 		{ to: "/chat", label: "Messages" },
+		{ to: "/profile", label: "Profile" },
 	] as const;
 
 	return (
@@ -22,7 +23,7 @@ export default function Header() {
 					})}
 				</nav>
 				<div className="flex items-center gap-2">
-
+					<UserButton />
 					<ModeToggle />
 				</div>
 			</div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { socketClient, type Message, type DeliveryConfirmation, type TypingIndicator } from "@/lib/socket-client";
 import { setAuthHeader } from "@/lib/api-client";
+import { usePathname } from "next/navigation";
 
 interface SocketContextType {
   socket: typeof socketClient;
@@ -28,14 +29,29 @@ const SocketContext = createContext<SocketContextType | null>(null);
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState(false);
+  const pathname = usePathname();
+
+  const shouldConnect = useMemo(() => {
+    if (!pathname) return false;
+    return pathname === "/chat" || pathname.startsWith("/chat/");
+  }, [pathname]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      socketClient.disconnect();
+      setIsConnected(false);
+      return;
+    }
 
-    // Set auth header for API requests
+    // Ensure API requests carry the Clerk identifier regardless of socket usage
     setAuthHeader(user.id);
 
-    // Connect to Socket.IO
+    if (!shouldConnect) {
+      socketClient.disconnect();
+      setIsConnected(false);
+      return;
+    }
+
     const socket = socketClient.connect(user.id);
 
     const handleConnect = () => {
@@ -51,7 +67,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
 
-    // Set initial connection state
     setIsConnected(socket.connected);
 
     return () => {
@@ -59,7 +74,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       socket.off("disconnect", handleDisconnect);
       socketClient.disconnect();
     };
-  }, [user?.id]);
+  }, [user?.id, shouldConnect]);
 
   const sendMessage = (toClerkId: string, text: string) => {
     if (!user?.id) return;
