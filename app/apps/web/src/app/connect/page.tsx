@@ -7,7 +7,7 @@ type Nullable<T> = T | null;
 export default function ConnectPage() {
 	useEffect(() => {
 		const state = {
-			backendUrl: "https://bbhkf952-8001.inc1.devtunnels.ms",
+			backendUrl: "http://localhost:8000",
 			currentStep: "source",
 			ws: null as Nullable<WebSocket>,
 			previewCanvas: null as Nullable<HTMLCanvasElement>,
@@ -1455,7 +1455,7 @@ export default function ConnectPage() {
 								<input
 									type="text"
 									id="backend-url"
-									defaultValue="https://bbhkf952-8001.inc1.devtunnels.ms"  
+									defaultValue="http://localhost:8000"  
 									className={inputClasses}
 								/>
 							</div>
