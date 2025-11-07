@@ -22,6 +22,7 @@ interface User {
 export default function AddContactPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [addingContactId, setAddingContactId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   // Debounce search query
@@ -49,17 +50,20 @@ export default function AddContactPage() {
   // Add contact mutation
   const addContactMutation = useMutation({
     mutationFn: async (contactClerkId: string) => {
+      setAddingContactId(contactClerkId);
       const response = await api.addContact(contactClerkId);
       return response.data;
     },
     onSuccess: () => {
       toast.success("Contact added successfully!");
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      setAddingContactId(null);
     },
     onError: (error: any) => {
       const errorMessage =
         error.response?.data?.error || "Failed to add contact";
       toast.error(errorMessage);
+      setAddingContactId(null);
     },
   });
 
@@ -138,10 +142,10 @@ export default function AddContactPage() {
                     {/* Add Button */}
                     <Button
                       onClick={() => addContactMutation.mutate(user.clerkId)}
-                      disabled={addContactMutation.isPending}
+                      disabled={addingContactId === user.clerkId}
                       className="h-12 px-8 text-lg bg-blue-600 hover:bg-blue-700"
                     >
-                      {addContactMutation.isPending ? (
+                      {addingContactId === user.clerkId ? (
                         <Loader />
                       ) : (
                         "Add Contact"

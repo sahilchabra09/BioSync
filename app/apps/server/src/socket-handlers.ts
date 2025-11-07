@@ -140,6 +140,13 @@ export function setupSocketHandlers(io: Server) {
 
         console.log(`[Socket] ✅ Message saved to DB: ${savedMessage.id}`);
 
+        // === Send confirmation to sender (not the full message, just the ID) ===
+        socket.emit("message_sent", {
+          messageId: savedMessage.id,
+          conversationId,
+          timestamp: savedMessage.createdAt,
+        });
+
         // === Update contact's last message preview and unread count ===
         // For receiver's contact list
         const existingContact = await db
@@ -183,8 +190,9 @@ export function setupSocketHandlers(io: Server) {
           // Receiver is online - send message
           io.to(receiverSocketId).emit("receive_message", {
             messageId: savedMessage.id,
-            from: fromClerkId,
-            text: text,
+            fromClerkId: fromClerkId,
+            toClerkId: toClerkId,
+            content: text,
             timestamp: savedMessage.createdAt,
             conversationId,
             messageType: savedMessage.messageType,

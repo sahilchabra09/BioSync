@@ -99,6 +99,8 @@ export default function ContactList() {
             if (diffHours < 24) return `${diffHours}h ago`;
             return `${diffDays}d ago`;
           };
+          const displayName = contact.nickname || contact.contactName || contact.contactClerkId;
+          const displayInitials = displayName.slice(0, 2).toUpperCase();
 
           return (
             <div
@@ -124,13 +126,13 @@ export default function ContactList() {
                 />
 
                 {/* Contact Avatar */}
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
-                  {contact.nickname?.slice(0, 2).toUpperCase() || contact.contactClerkId.slice(0, 2).toUpperCase()}
+                <div className="w-24 h-24 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
+                  {displayInitials}
                 </div>
 
                 {/* Contact Name */}
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-                  {contact.nickname || contact.contactClerkId}
+                  {displayName}
                 </h2>
 
                 {/* Last Message Preview */}

@@ -32,4 +32,8 @@ export const api = {
     apiClient.get(`/conversations/${conversationId}/messages`, {
       params: { limit, offset },
     }),
+  getMessagesByContact: (contactId: string, limit = 50, offset = 0) =>
+    apiClient.get(`/conversations/with/${contactId}/messages`, {
+      params: { limit, offset },
+    }),
 };

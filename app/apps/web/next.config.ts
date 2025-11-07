@@ -5,9 +5,10 @@ const nextConfig: NextConfig = {
 	reactCompiler: true,
 	experimental: {
     serverActions: {
-      allowedOrigins: ["*.devtunnels.ms", "localhost:3000"]
+      allowedOrigins: ["1z13h9pq-3001.inc1.devtunnels.ms", "localhost:3001"]
     }
   }
 };
 
 export default nextConfig;
+allowedOrigins: ["*.devtunnels.ms"]

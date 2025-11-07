@@ -141,6 +141,10 @@ class SocketIOClient {
     this.socket?.on("user_typing", callback);
   }
 
+  onMessageSent(callback: (data: { messageId: number; conversationId: number; timestamp: Date }) => void) {
+    this.socket?.on("message_sent", callback);
+  }
+
   offReceiveMessage(callback: (data: Message) => void) {
     this.socket?.off("receive_message", callback);
   }

@@ -35,8 +35,15 @@ app.doc("/doc", {
   },
 });
 
-const PORT = parseInt(process.env.PORT || "3000");
-const SOCKET_PORT = 3002;
+const API_URL = process.env.API_URL || "http://localhost:3000";
+const SOCKET_URL = process.env.SOCKET_URL || "http://localhost:3002";
+
+// Parse ports from URLs
+const apiUrlParts = new URL(API_URL);
+const PORT = parseInt(apiUrlParts.port || "3000");
+
+const socketUrlParts = new URL(SOCKET_URL);
+const SOCKET_PORT = parseInt(socketUrlParts.port || "3002");
 
 // Create HTTP server for Socket.IO
 const httpServer = createServer();
@@ -54,11 +61,11 @@ setupSocketHandlers(io);
 
 // Start Socket.IO server
 httpServer.listen(SOCKET_PORT, () => {
-  console.log(`� Socket.IO server running on http://localhost:${SOCKET_PORT}`);
+  console.log(`🔌 Socket.IO server running on ${SOCKET_URL}`);
 });
 
-console.log(`� HTTP Server running on http://localhost:${PORT}`);
-console.log(`📖 API Documentation: http://localhost:${PORT}/scalar`);
+console.log(`🚀 HTTP Server running on ${API_URL}`);
+console.log(`📖 API Documentation: ${API_URL}/scalar`);
 
 export default {
   port: PORT,

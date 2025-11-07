@@ -25,10 +25,10 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { user } = useUser();
-  const { socket, isConnected, sendMessage, startTyping, stopTyping, onReceiveMessage, onMessageDelivered, onUserTyping } = useSocket();
+  const { socket, isConnected, sendMessage, startTyping, stopTyping, onReceiveMessage, onMessageDelivered, onUserTyping, onMessageSent } = useSocket();
   const invalidateMessages = useInvalidateMessages();
 
-  // Fetch messages from API
+  // Fetch messages from API (now includes otherUser data)
   const { data: messagesData, isLoading, error } = useMessages(contactId);
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -48,14 +48,14 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
     if (messagesData?.messages) {
       setMessages(
         messagesData.messages.map((msg: any) => ({
-          id: msg.id,
-          senderId: msg.senderClerkId,
+          id: msg.id.toString(),
+          senderId: msg.fromClerkId,
           content: msg.content,
           timestamp: new Date(msg.createdAt).toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          isRead: msg.status === "read",
+          isRead: msg.isRead,
         }))
       );
     }
@@ -65,12 +65,12 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
   useEffect(() => {
     if (!isConnected) return;
 
-    // Listen for incoming messages
+    // Listen for incoming messages (from others)
     const handleReceiveMessage = (data: any) => {
-      if (data.senderClerkId === contactId || data.receiverClerkId === contactId) {
+      if (data.fromClerkId === contactId || data.toClerkId === contactId) {
         const newMessage: Message = {
           id: data.messageId.toString(),
-          senderId: data.senderClerkId,
+          senderId: data.fromClerkId,
           content: data.content,
           timestamp: new Date().toLocaleTimeString("en-US", {
             hour: "2-digit",
@@ -78,13 +78,36 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
           }),
           isRead: false,
         };
-        setMessages((prev) => [...prev, newMessage]);
+        
+        // Add message if it doesn't already exist
+        setMessages((prev) => {
+          const exists = prev.some(m => m.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
+        });
         
         // Mark as read if it's from the other person
-        if (data.senderClerkId === contactId && data.messageId) {
+        if (data.fromClerkId === contactId && data.messageId) {
           socket.markAsRead([data.messageId]);
         }
       }
+    };
+
+    // Listen for message sent confirmation (replace temp ID with real ID)
+    const handleMessageSent = (data: any) => {
+      setMessages((prev) => {
+        // Find the most recent temp message and replace it
+        const tempIndex = prev.findIndex(m => m.id.toString().startsWith('temp-'));
+        if (tempIndex !== -1) {
+          const updatedMessages = [...prev];
+          updatedMessages[tempIndex] = {
+            ...updatedMessages[tempIndex],
+            id: data.messageId.toString(),
+          };
+          return updatedMessages;
+        }
+        return prev;
+      });
     };
 
     // Listen for message delivered status
@@ -103,6 +126,7 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
       }
     };
 
+    onMessageSent(handleMessageSent);
     onReceiveMessage(handleReceiveMessage);
     onMessageDelivered(handleMessageDelivered);
     onUserTyping(handleUserTyping);
@@ -110,7 +134,7 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
     return () => {
       // Cleanup is handled in SocketIOClient class
     };
-  }, [isConnected, contactId, socket, onReceiveMessage, onMessageDelivered, onUserTyping]);
+  }, [isConnected, contactId, socket, onReceiveMessage, onMessageDelivered, onUserTyping, onMessageSent]);
 
   useEffect(() => {
     scrollToBottom();
@@ -127,8 +151,9 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
     sendMessage(contactId, content);
 
     // Optimistically add message to UI
+    const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       senderId: user.id,
       content,
       timestamp: new Date().toLocaleTimeString("en-US", {
@@ -139,11 +164,6 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
     };
     setMessages((prev) => [...prev, tempMessage]);
     setInputMessage("");
-
-    // Invalidate messages query to refetch
-    setTimeout(() => {
-      invalidateMessages(contactId);
-    }, 500);
 
     // Simulate AI generating new options after sending
     if (isEyeTracking) {
@@ -238,7 +258,7 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
 
         <div className="flex items-center gap-3 flex-1">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+            <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
               {messagesData?.otherUser?.nickname?.slice(0, 2).toUpperCase() || contactId.slice(0, 2).toUpperCase()}
             </div>
             <div
@@ -283,7 +303,7 @@ export default function ChatPage({ params }: { params: Promise<{ contactId: stri
               }`}
             >
               {message.senderId !== user?.id && (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
                   {messagesData?.otherUser?.nickname?.slice(0, 2).toUpperCase() || contactId.slice(0, 2).toUpperCase()}
                 </div>
               )}

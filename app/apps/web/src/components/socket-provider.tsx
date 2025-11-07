@@ -16,6 +16,7 @@ interface SocketContextType {
   onMessageDelivered: (callback: (data: DeliveryConfirmation) => void) => void;
   onMessageFailed: (callback: (data: { error: string; details?: string }) => void) => void;
   onUserTyping: (callback: (data: TypingIndicator) => void) => void;
+  onMessageSent: (callback: (data: { messageId: number; conversationId: number; timestamp: Date }) => void) => void;
   offReceiveMessage: (callback: (data: Message) => void) => void;
   offMessageDelivered: (callback: (data: DeliveryConfirmation) => void) => void;
   offMessageFailed: (callback: (data: { error: string; details?: string }) => void) => void;
@@ -90,6 +91,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     onMessageDelivered: socketClient.onMessageDelivered.bind(socketClient),
     onMessageFailed: socketClient.onMessageFailed.bind(socketClient),
     onUserTyping: socketClient.onUserTyping.bind(socketClient),
+    onMessageSent: socketClient.onMessageSent.bind(socketClient),
     offReceiveMessage: socketClient.offReceiveMessage.bind(socketClient),
     offMessageDelivered: socketClient.offMessageDelivered.bind(socketClient),
     offMessageFailed: socketClient.offMessageFailed.bind(socketClient),

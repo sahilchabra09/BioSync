@@ -12,6 +12,7 @@ const ContactSchema = z.object({
   contactClerkId: z.string(),
   contactName: z.string().nullable(),
   nickname: z.string().nullable(),
+  profileImage: z.string().nullable(),
   lastMessagePreview: z.string().nullable(),
   lastMessageAt: z.string().nullable(),
   unreadCount: z.number(),
@@ -104,12 +105,36 @@ contactsRouter.openapi(getContactsRoute, async (c) => {
     .where(eq(contactsTable.userClerkId, clerkId))
     .orderBy(desc(contactsTable.lastMessageAt));
 
+  const uniqueContactIds = Array.from(new Set(contacts.map((contact) => contact.contactClerkId)));
+  const clerkUserMap = new Map<string, Awaited<ReturnType<typeof clerkClient.users.getUser>>>();
+
+  if (uniqueContactIds.length > 0) {
+    const clerkUsersResults = await Promise.allSettled(
+      uniqueContactIds.map((id) => clerkClient.users.getUser(id))
+    );
+
+    clerkUsersResults.forEach((result, index) => {
+      const contactId = uniqueContactIds[index];
+      if (!contactId) {
+        return;
+      }
+
+      if (result.status === "fulfilled") {
+        clerkUserMap.set(contactId, result.value);
+      }
+    });
+  }
+
   return c.json({
     contacts: contacts.map((contact) => ({
       id: contact.id,
       contactClerkId: contact.contactClerkId,
-      contactName: null,
+      contactName:
+        clerkUserMap.get(contact.contactClerkId)?.fullName ||
+        clerkUserMap.get(contact.contactClerkId)?.username ||
+        null,
       nickname: contact.nickname,
+      profileImage: clerkUserMap.get(contact.contactClerkId)?.imageUrl || null,
       lastMessagePreview: contact.lastMessagePreview,
       lastMessageAt: contact.lastMessageAt?.toISOString() || null,
       unreadCount: contact.unreadCount,
@@ -238,6 +263,7 @@ contactsRouter.openapi(addContactRoute, async (c) => {
           contactClerkId: newContact.contactClerkId,
           contactName: clerkUser.fullName,
           nickname: newContact.nickname,
+          profileImage: clerkUser.imageUrl,
           lastMessagePreview: null,
           lastMessageAt: null,
           unreadCount: 0,

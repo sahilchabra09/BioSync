@@ -34,14 +34,14 @@ export const useConversations = () => {
   });
 };
 
-export const useMessages = (conversationId: string | number, limit = 50, offset = 0) => {
+export const useMessages = (contactId: string, limit = 50, offset = 0) => {
   return useQuery({
-    queryKey: ["messages", conversationId, limit, offset],
+    queryKey: ["messages", contactId, limit, offset],
     queryFn: async () => {
-      const { data } = await api.getMessages(Number(conversationId), limit, offset);
+      const { data } = await api.getMessagesByContact(contactId, limit, offset);
       return data;
     },
-    enabled: !!conversationId,
+    enabled: !!contactId,
   });
 };
 
@@ -49,7 +49,7 @@ export const useMessages = (conversationId: string | number, limit = 50, offset 
 export const useInvalidateMessages = () => {
   const queryClient = useQueryClient();
   
-  return (conversationId: string | number) => {
-    queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+  return (contactId: string) => {
+    queryClient.invalidateQueries({ queryKey: ["messages", contactId] });
   };
 };
