@@ -3,12 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Power, ArrowLeft, ArrowRight } from "lucide-react";
-import { useMe } from "@/lib/hooks";
 import axios from "axios";
 
-interface UserProfile {
-	isParalyzed: boolean;
-}
+
 
 interface PinState {
 	d0: boolean;
@@ -22,10 +19,6 @@ const APPLIANCE_PASSWORD = "appliances123";
 
 export default function AppliancesPage() {
 	const router = useRouter();
-	const { data: user, isLoading, error } = useMe();
-	const isParalyzedUser = Boolean(
-		(user as UserProfile | undefined)?.isParalyzed ?? (user as any)?.is_paralysed
-	);
 
 	const [pinStates, setPinStates] = useState<PinState>({
 		d0: false,
@@ -37,26 +30,6 @@ export default function AppliancesPage() {
 	const [loadingPins, setLoadingPins] = useState<Set<string>>(new Set());
 	const [controlError, setControlError] = useState<string | null>(null);
 
-	if (isLoading) {
-		return (
-			<div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-950">
-				<Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-			</div>
-		);
-	}
-
-	if (error) {
-		return (
-			<div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-950">
-				<div className="text-center space-y-2">
-					<p className="text-red-500 font-medium">Unable to load your profile</p>
-					<p className="text-sm text-gray-600 dark:text-gray-400">
-						{error instanceof Error ? error.message : "Unknown error"}
-					</p>
-				</div>
-			</div>
-		);
-	}
 
 	const handlePinToggle = async (pin: keyof PinState) => {
 		const newState = !pinStates[pin];
@@ -96,12 +69,12 @@ export default function AppliancesPage() {
 	};
 
 	const handleBack = () => {
-		router.push("/chat");
+		router.push("/");
 	};
 
 	const handleNext = () => {
 		// You can navigate to another page if needed
-		router.push("/chat");
+		router.push("/");
 	};
 
 	const appliances = [
@@ -120,6 +93,7 @@ export default function AppliancesPage() {
 				key={appliance.pin}
 				onClick={() => handlePinToggle(appliance.pin)}
 				disabled={isLoading}
+				data-gaze-activate
 				className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 			>
 				<div
@@ -154,6 +128,7 @@ export default function AppliancesPage() {
 			<div className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 gap-4">
 				<button
 					onClick={handleBack}
+					data-gaze-activate
 					className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
 				>
 					<ArrowLeft className="w-6 h-6" />
@@ -178,6 +153,7 @@ export default function AppliancesPage() {
 			<div className="grid grid-cols-3 grid-rows-2 h-[calc(100vh-4rem)] w-full gap-0">
 				<button
 					onClick={handleBack}
+					data-gaze-activate
 					className="relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 				>
 					<div className="absolute inset-0 m-5 bg-gray-600 hover:bg-gray-700 group-hover:scale-[1.02] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl text-white">
@@ -190,6 +166,7 @@ export default function AppliancesPage() {
 
 				<button
 					onClick={handleNext}
+					data-gaze-activate
 					className="relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 				>
 					<div className="absolute inset-0 m-5 bg-gray-600 hover:bg-gray-700 group-hover:scale-[1.02] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl text-white">

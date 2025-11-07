@@ -48,9 +48,18 @@ export default function HomePage() {
 	const emptySlots = Math.max(0, totalSlots - menuItems.length);
 
 	const handleCardClick = (path: string | null) => {
-		if (path) {
-			router.push(path as any);
+		if (!path) {
+			return;
 		}
+		if (path === "/connect") {
+			try {
+				localStorage.removeItem("eye-tracker-overlay-enabled");
+				window.dispatchEvent(new CustomEvent("eye-tracking-overlay-update"));
+			} catch (error) {
+				console.warn("Disable overlay before navigating to connect", error);
+			}
+		}
+		router.push(path as any);
 	};
 
 	return (

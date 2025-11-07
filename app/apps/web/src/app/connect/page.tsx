@@ -6,6 +6,18 @@ type Nullable<T> = T | null;
 
 export default function ConnectPage() {
 	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
+		try {
+			localStorage.removeItem("eye-tracker-overlay-enabled");
+			window.dispatchEvent(new CustomEvent("eye-tracking-overlay-update"));
+		} catch (error) {
+			console.warn("Disable overlay on connect load", error);
+		}
+	}, []);
+
+	useEffect(() => {
 		const state = {
 			backendUrl: "http://localhost:8000",
 			currentStep: "source",

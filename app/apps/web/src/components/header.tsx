@@ -1,9 +1,17 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ModeToggle } from "./mode-toggle";
 import { UserButton } from "@clerk/nextjs";
 
 export default function Header() {
+	const pathname = usePathname();
+	
+	// Hide header on talk page
+	if (pathname === "/talk") {
+		return null;
+	}
+	
 	const links = [
 		{ to: "/", label: "Home" },
 		{ to: "/chat", label: "Messages" },

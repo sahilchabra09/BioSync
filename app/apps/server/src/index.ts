@@ -35,7 +35,7 @@ app.doc("/doc", {
   },
 });
 
-const API_URL = process.env.API_URL || "http://localhost:3000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 const SOCKET_URL = process.env.SOCKET_URL || "http://localhost:3002";
 
 // Parse ports from URLs

@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { Loader2, Mic, ArrowLeft, RefreshCw, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, Mic, ArrowLeft, RefreshCw, Check, ArrowRight } from "lucide-react";
 
-import ContactGrid from "@/components/contact-grid";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api-client";
-import { useMe } from "@/lib/hooks";
-
-interface UserProfile {
-	isParalyzed: boolean;
-}
 
 const OPTION_STYLES = [
 	{ color: "bg-blue-500", ring: "ring-blue-300" },
@@ -20,51 +15,7 @@ const OPTION_STYLES = [
 ];
 
 export default function TalkPage() {
-	const { data: user, isLoading, error } = useMe();
-	const isParalyzedUser = Boolean(
-		(user as UserProfile | undefined)?.isParalyzed ?? (user as any)?.is_paralysed
-	);
-
-	if (isLoading) {
-		return (
-			<div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-950">
-				<Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-			</div>
-		);
-	}
-
-	if (error) {
-		return (
-			<div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-gray-950">
-				<div className="text-center space-y-2">
-					<p className="text-red-500 font-medium">Unable to load your profile</p>
-					<p className="text-sm text-gray-600 dark:text-gray-400">
-						{error instanceof Error ? error.message : "Unknown error"}
-					</p>
-				</div>
-			</div>
-		);
-	}
-
-	if (isParalyzedUser) {
-		return <ParalyzedTalkView />;
-	}
-
-	return <VoiceTranscriptionView />;
-}
-
-function ParalyzedTalkView() {
-	return (
-		<ContactGrid
-			contacts={[]}
-			showConnectionStatus={false}
-			showNextTile={false}
-			emptyLabel=""
-		/>
-	);
-}
-
-function VoiceTranscriptionView() {
+	const router = useRouter();
 	const [isRecording, setIsRecording] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -389,6 +340,7 @@ function VoiceTranscriptionView() {
 			<button
 				key={`option-${index}`}
 				onClick={() => handleOptionClick(text, index)}
+				data-gaze-activate
 				className="relative flex h-full w-full cursor-pointer flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 			>
 				<div
@@ -432,82 +384,61 @@ function VoiceTranscriptionView() {
 	}
 
 	return (
-		<div className="min-h-screen w-full flex items-center justify-center bg-white dark:bg-gray-950 px-4 py-10">
-			<div className="w-full max-w-3xl flex flex-col items-center gap-10">
-				<div className="text-center space-y-2">
-					<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-						Hold to talk
-					</h1>
-					<p className="text-sm text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
-						Hold the button to start recording your voice. Release it to send the audio for transcription and see the result instantly.
-					</p>
+		<div className="h-screen w-screen flex bg-white dark:bg-gray-950">
+			{/* Left Side - Back Button */}
+			<button
+				onClick={() => router.push("/")}
+				data-gaze-activate
+				className="h-screen w-[50vw] bg-blue-600 hover:bg-blue-700 flex flex-col items-center justify-center transition-colors duration-300 text-white group"
+			>
+				<ArrowLeft className="w-24 h-24 mb-6 group-hover:-translate-x-4 transition-transform duration-300" />
+				<div className="text-4xl font-bold">Back</div>
+			</button>
+
+			{/* Right Side - Hold to Talk */}
+			<button
+				type="button"
+				data-gaze-activate
+				className={`h-screen w-[50vw] flex flex-col items-center justify-center transition-all duration-300 ${
+					isRecording ? "bg-red-600 text-white" : "bg-green-600 hover:bg-green-700 text-white"
+				} ${isUploading ? "opacity-70" : ""}`}
+				disabled={isUploading}
+				onPointerDown={handlePointerDown}
+				onPointerUp={handlePointerUp}
+				onPointerLeave={handlePointerLeave}
+				onPointerCancel={handlePointerCancel}
+				onKeyDown={handleKeyDown}
+				onKeyUp={handleKeyUp}
+				aria-pressed={isRecording}
+			>
+				<Mic className={`w-32 h-32 mb-8 ${isRecording ? "animate-pulse" : ""}`} />
+				<div className="text-5xl font-bold mb-4">
+					{isRecording ? "Recording..." : "Hold to Talk"}
 				</div>
+				<p className="text-xl opacity-90">
+					{isRecording ? "Release to transcribe" : "Press and hold to speak"}
+				</p>
 
-				<div className="flex flex-col items-center gap-6">
-					<Button
-						type="button"
-						variant="secondary"
-						className={`h-28 w-28 rounded-full text-base font-semibold shadow-lg transition-all duration-200 ${
-							isRecording ? "bg-red-600 text-white scale-105" : "bg-blue-600 text-white hover:scale-105"
-						} ${isUploading ? "opacity-70" : ""}`}
-						disabled={isUploading}
-						onPointerDown={handlePointerDown}
-						onPointerUp={handlePointerUp}
-						onPointerLeave={handlePointerLeave}
-						onPointerCancel={handlePointerCancel}
-						onKeyDown={handleKeyDown}
-						onKeyUp={handleKeyUp}
-						aria-pressed={isRecording}
-					>
-						{/* Capture audio while the press is held down */}
-						<div className="flex flex-col items-center gap-2">
-							<Mic className={`w-8 h-8 ${isRecording ? "animate-pulse" : ""}`} />
-							<span>{isRecording ? "Recording..." : "Hold to record"}</span>
-						</div>
-					</Button>
-
-					<p className="text-xs text-gray-500 dark:text-gray-500">
-						Release the button to transcribe your speech.
-					</p>
-
-					{(isRecording || isUploading) && (
-						<div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-							<Loader2 className="w-4 h-4 animate-spin" />
-							<span>{isRecording ? "Listening..." : "Sending audio for transcription..."}</span>
-						</div>
-					)}
-
-					{error && (
-						<div className="text-sm text-red-500 max-w-md text-center">{error}</div>
-					)}
-				</div>
-
-				{transcriptions.length > 0 && (
-					<div className="w-full max-w-2xl space-y-4">
-						<h2 className="text-lg font-semibold text-gray-900 dark:text-white text-center">
-							Recent transcriptions
-						</h2>
-						<div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-							{transcriptions.map((item) => (
-								<div
-									key={item.id}
-									className="border border-gray-200 dark:border-gray-800 rounded-2xl p-4 bg-white dark:bg-gray-900 shadow-sm"
-								>
-									<p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-										{new Date(item.timestamp).toLocaleTimeString([], {
-											hour: "2-digit",
-											minute: "2-digit",
-										})}
-									</p>
-									<p className="text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
-										{item.text}
-									</p>
-								</div>
-							))}
-						</div>
+				{(isRecording || isUploading) && (
+					<div className="flex items-center gap-3 text-lg mt-8">
+						<Loader2 className="w-6 h-6 animate-spin" />
+						<span>{isRecording ? "Listening..." : "Sending audio for transcription..."}</span>
 					</div>
 				)}
-			</div>
+
+				{error && (
+					<div className="text-lg mt-8 max-w-md text-center bg-white text-red-600 px-6 py-3 rounded-lg">
+						{error}
+					</div>
+				)}
+
+				{transcriptions.length > 0 && !isRecording && !isUploading && (
+					<div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-sm opacity-75">
+						Last: {transcriptions[0].text.substring(0, 50)}
+						{transcriptions[0].text.length > 50 ? "..." : ""}
+					</div>
+				)}
+			</button>
 
 			{showOptions && (
 				<div className="fixed inset-0 z-50 bg-white dark:bg-gray-950">
@@ -560,6 +491,7 @@ function VoiceTranscriptionView() {
 						<div className="grid grid-cols-3 grid-rows-2 h-[calc(100vh-8rem)] w-full gap-0">
 							<button
 								onClick={handleBack}
+								data-gaze-activate
 								className="relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 							>
 								<div className="absolute inset-0 m-5 bg-blue-600 hover:bg-blue-700 group-hover:scale-[1.02] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl text-white">
@@ -575,6 +507,7 @@ function VoiceTranscriptionView() {
 
 							<button
 								onClick={handleRetry}
+								data-gaze-activate
 								className="relative flex flex-col items-center justify-center border border-gray-200 dark:border-gray-800 group"
 							>
 								<div className="absolute inset-0 m-5 bg-red-500 hover:bg-red-600 group-hover:scale-[1.02] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 group-hover:shadow-xl text-white">
